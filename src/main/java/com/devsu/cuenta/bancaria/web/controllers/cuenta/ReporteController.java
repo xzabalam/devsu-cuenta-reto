@@ -1,6 +1,6 @@
 package com.devsu.cuenta.bancaria.web.controllers.cuenta;
 
-import com.devsu.cuenta.bancaria.business.services.cuenta.CuentaService;
+import com.devsu.cuenta.bancaria.business.services.movimientos.MovimientoService;
 import com.devsu.cuenta.bancaria.web.dtos.MovimientoTo;
 import com.devsu.cuenta.bancaria.web.mappers.MovimientoToEnityMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,16 +18,16 @@ import java.util.stream.Collectors;
 @RequestMapping("/reportes")
 public class ReporteController {
 
-    private final CuentaService cuentaService;
+    private final MovimientoService movimientoService;
 
-    public ReporteController(CuentaService cuentaService) {
-        this.cuentaService = cuentaService;
+    public ReporteController(MovimientoService movimientoService) {
+        this.movimientoService = movimientoService;
     }
 
     @GetMapping("/movimientos/all/{idCliente}")
     @Operation(summary = "Permite obtener el listado de movimientos de un cliente.")
     public ResponseEntity<List<MovimientoTo>> obtenerTodosLosMovimientos(@PathVariable("idCliente") Long idCliente) {
-        List<MovimientoTo> movimientosTo = cuentaService.obtenerMovimientosPorCliente(idCliente).stream().map(movimiento ->
+        List<MovimientoTo> movimientosTo = movimientoService.obtenerMovimientosPorCliente(idCliente).stream().map(movimiento ->
                 MovimientoToEnityMapper.convertirToCuentaTo(movimiento, movimiento.getCuenta(),
                         movimiento.getCuenta().getCliente())
         ).collect(Collectors.toList());
@@ -45,7 +45,7 @@ public class ReporteController {
             @RequestParam(required = false, value = "page", defaultValue = "0") int page,
             @RequestParam(required = false, value = "size", defaultValue = "500") int size) {
 
-        Page<MovimientoTo> movimientosTo = cuentaService.obtenerMovimientosPorClienteConPaginacion(idCliente,
+        Page<MovimientoTo> movimientosTo = movimientoService.obtenerMovimientosPorClienteConPaginacion(idCliente,
                 fechaDesde, fechaHasta, page, size).map(movimiento ->
                 MovimientoToEnityMapper.convertirToCuentaTo(movimiento, movimiento.getCuenta(),
                         movimiento.getCuenta().getCliente())
