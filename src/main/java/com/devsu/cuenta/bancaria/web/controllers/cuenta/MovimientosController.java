@@ -1,15 +1,14 @@
 package com.devsu.cuenta.bancaria.web.controllers.cuenta;
 
 import com.devsu.cuenta.bancaria.business.exceptions.CuentaException;
-import com.devsu.cuenta.bancaria.business.services.cuenta.ClienteService;
 import com.devsu.cuenta.bancaria.business.services.cuenta.CuentaService;
-import com.devsu.cuenta.bancaria.business.services.cuenta.LimiteDiarioService;
+import com.devsu.cuenta.bancaria.business.services.movimientos.component.MovimientoComponent;
+import com.devsu.cuenta.bancaria.business.services.movimientos.strategy.MovimientoStrategy;
 import com.devsu.cuenta.bancaria.business.services.security.UsuarioService;
 import com.devsu.cuenta.bancaria.data.entities.cuenta.Cliente;
 import com.devsu.cuenta.bancaria.data.entities.cuenta.Cuenta;
 import com.devsu.cuenta.bancaria.data.entities.cuenta.Movimiento;
 import com.devsu.cuenta.bancaria.data.entities.security.Usuario;
-import com.devsu.cuenta.bancaria.data.enums.TipoMovimientoEnum;
 import com.devsu.cuenta.bancaria.web.dtos.MovimientoTo;
 import com.devsu.cuenta.bancaria.web.mappers.MovimientoToEnityMapper;
 import com.devsu.cuenta.bancaria.web.util.RestPreconditions;
@@ -24,16 +23,15 @@ import javax.validation.Valid;
 @RestController
 @RequestMapping("/movimientos")
 public class MovimientosController {
-    private final ClienteService clienteService;
     private final UsuarioService usuarioService;
     private final CuentaService cuentaService;
-    private final LimiteDiarioService limiteDiarioService;
+    private final MovimientoComponent movimientoComponent;
 
-    public MovimientosController(ClienteService clienteService, UsuarioService usuarioService, CuentaService cuentaService, LimiteDiarioService limiteDiarioService) {
-        this.clienteService = clienteService;
+    public MovimientosController(UsuarioService usuarioService, CuentaService cuentaService, MovimientoComponent movimientoComponent) {
         this.usuarioService = usuarioService;
         this.cuentaService = cuentaService;
-        this.limiteDiarioService = limiteDiarioService;
+
+        this.movimientoComponent = movimientoComponent;
     }
 
     @PostMapping("/{numeroCuenta}")
@@ -48,17 +46,13 @@ public class MovimientosController {
         Usuario usuario = usuarioService.getUserByUsername(authentication.getName());
         Cuenta cuenta = cuentaService.obtenerCuentaPorNumero(numeroCuenta);
         Cliente cliente = cuenta.getCliente();
+        MovimientoStrategy movimientoStrategy = movimientoComponent.getEstrategias().get(movimientoTo.getTipoMovimiento());
 
-        Movimiento movimiento;
-        if (movimientoTo.getTipoMovimiento().equals(TipoMovimientoEnum.DEPOSITO)) {
-            movimiento = cuentaService.deposito(numeroCuenta, movimientoTo, usuario.getId());
-        } else if (movimientoTo.getTipoMovimiento().equals(TipoMovimientoEnum.RETIRO)) {
-            limiteDiarioService.verificarLimiteDiario(cuenta, movimientoTo.getMovimiento(), usuario);
-            movimiento = cuentaService.retiro(numeroCuenta, movimientoTo, usuario.getId());
-        } else {
-            throw new CuentaException("El tipo de movimiento " + movimientoTo.getTipoMovimiento().name() + " no es " +
-                    "permitido.");
+        if (movimientoStrategy == null) {
+            throw new CuentaException("El tipo de movimiento " + movimientoTo.getTipoMovimiento().name() + " no está permitido.");
         }
+
+        Movimiento movimiento = movimientoStrategy.realizarMovimiento(numeroCuenta, movimientoTo, usuario);
 
         return new ResponseEntity<>(MovimientoToEnityMapper.convertirToCuentaTo(movimiento, cuenta, cliente), HttpStatus.OK);
     }
