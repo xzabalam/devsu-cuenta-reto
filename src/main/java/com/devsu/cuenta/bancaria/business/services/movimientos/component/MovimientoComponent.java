@@ -1,5 +1,6 @@
 package com.devsu.cuenta.bancaria.business.services.movimientos.component;
 
+import com.devsu.cuenta.bancaria.business.exceptions.CuentaException;
 import com.devsu.cuenta.bancaria.business.services.movimientos.strategy.MovimientoStrategy;
 import com.devsu.cuenta.bancaria.business.services.movimientos.strategy.impl.DepositoStrategy;
 import com.devsu.cuenta.bancaria.business.services.movimientos.strategy.impl.RetiroStrategy;
@@ -25,7 +26,13 @@ public class MovimientoComponent {
         estrategias.put(TipoMovimientoEnum.RETIRO, this.retiroStrategy);
     }
 
-    public Map<TipoMovimientoEnum, MovimientoStrategy> getEstrategias() {
-        return estrategias;
+    public MovimientoStrategy getEstrategia(TipoMovimientoEnum tipoMovimiento) {
+        MovimientoStrategy movimientoStrategy = estrategias.get(tipoMovimiento);
+
+        if (movimientoStrategy == null) {
+            throw new CuentaException("El tipo de movimiento " + tipoMovimiento.name() + " no está permitido.");
+        }
+
+        return movimientoStrategy;
     }
 }
